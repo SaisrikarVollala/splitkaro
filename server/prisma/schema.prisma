@@ -1,0 +1,144 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Better Auth required models
+
+model User {
+  id            String        @id
+  name          String
+  email         String
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+  sessions      Session[]
+  accounts      Account[]
+  groupMembers  GroupMember[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// App models
+
+model Group {
+  id          String        @id @default(uuid())
+  name        String
+  createdAt   DateTime      @default(now())
+  members     GroupMember[]
+  invitation  Invitation?
+  settlements Settlement[]
+}
+
+model GroupMember {
+  id       String   @id @default(uuid())
+  userId   String
+  groupId  String
+  joinedAt DateTime @default(now())
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+}
+
+model Invitation {
+  id        String   @id @default(uuid())
+  token     String   @unique @default(uuid())
+  groupId   String   @unique
+  createdAt DateTime @default(now())
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id          String         @id @default(uuid())
+  groupId     String
+  creatorId   String
+  title       String
+  amount      Float
+  notes       String?
+  receiptUrl  String?
+  splitMethod String         @default("equal") // "equal" | "custom"
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  splits      ExpenseSplit[]
+}
+
+model ExpenseSplit {
+  id        String  @id @default(uuid())
+  expenseId String
+  userId    String
+  amount    Float
+  expense   Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+}
+
+model Activity {
+  id        String   @id @default(uuid())
+  groupId   String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model Settlement {
+  id        String   @id @default(uuid())
+  groupId   String
+  payerId   String
+  payeeId   String
+  amount    Float
+  createdAt DateTime @default(now())
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+
