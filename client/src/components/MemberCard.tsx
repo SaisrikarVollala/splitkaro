@@ -1,4 +1,8 @@
 import { User as UserIcon } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
 
 interface MemberCardProps {
   member: {
@@ -21,17 +25,17 @@ export const MemberCard = ({ member, onSettleUp }: MemberCardProps) => {
   const displayAmount = `₹${Math.abs(member.balance).toLocaleString('en-IN')}`;
 
   return (
-    <div className="flex items-center justify-between p-4 bg-[#12121a] border border-gray-800 rounded-2xl hover:border-gray-700 transition-colors">
+    <Card className="flex items-center justify-between p-4 hover:border-primary/30 hover:shadow-sm transition-all duration-200">
       <div className="flex items-center gap-3">
-        {member.image ? (
-          <img src={member.image} alt={member.name} className="w-10 h-10 rounded-full border border-gray-700" />
-        ) : (
-          <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700">
-            <UserIcon className="w-5 h-5 text-gray-400" />
-          </div>
-        )}
+        <Avatar size="default" className="border border-border">
+          {member.image ? <AvatarImage src={member.image} alt={member.name} /> : null}
+          <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+        </Avatar>
         <div>
-          <h4 className="font-medium text-white">{member.name} {member.isMe && <span className="text-xs text-gray-500 ml-1">(You)</span>}</h4>
+          <h4 className="text-sm font-bold text-foreground">
+            {member.name} {member.isMe && <span className="text-xs text-muted-foreground font-normal ml-1">(You)</span>}
+          </h4>
+          <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Group Participant</p>
         </div>
       </div>
 
@@ -39,31 +43,33 @@ export const MemberCard = ({ member, onSettleUp }: MemberCardProps) => {
         <div className="flex items-center gap-4">
           <div className="text-right">
             {isSettled ? (
-              <span className="text-sm font-medium text-gray-400 bg-gray-800/50 px-3 py-1 rounded-full">Settled Up</span>
+              <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-wider">
+                Settled Up
+              </Badge>
             ) : isReceive ? (
-              <span className="text-sm font-bold text-[#00d09c] bg-[#00d09c]/10 px-3 py-1 rounded-full border border-[#00d09c]/20">
-                Receive {displayAmount}
+              <span className="inline-flex items-center text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-900/50">
+                Owes You {displayAmount}
               </span>
             ) : (
-              <span className="text-sm font-bold text-[#ff4757] bg-[#ff4757]/10 px-3 py-1 rounded-full border border-[#ff4757]/20">
-                Pay {displayAmount}
+              <span className="inline-flex items-center text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 px-2.5 py-1 rounded-full border border-rose-200 dark:border-rose-900/50">
+                You Owe {displayAmount}
               </span>
             )}
           </div>
           {!isSettled && onSettleUp && (
-            <button
+            <Button
               onClick={(e) => {
                 e.stopPropagation();
                 onSettleUp(member.id, member.name, member.balance);
               }}
-              className="bg-[#00d09c] hover:bg-[#00b386] text-black font-semibold text-xs px-3.5 py-1.5 rounded-xl transition-all shadow-md shadow-[#00d09c]/10"
+              size="sm"
+              className="font-bold cursor-pointer"
             >
               Settle Up
-            </button>
+            </Button>
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 };
-

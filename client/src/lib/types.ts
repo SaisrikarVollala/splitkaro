@@ -24,6 +24,14 @@ export interface ExpenseInitialData {
   receiptUrl: string | null;
   splitMethod: 'equal' | 'custom';
   splits: ExpenseSplit[];
+  tempId?: string;
+  category?: string;
+  merchantName?: string | null;
+  date?: string | null;
+  currency?: string | null;
+  lineItems?: any[] | null;
+  travelInfo?: any | null;
+  smartNotes?: string | null;
 }
 
 // Shared sub-types

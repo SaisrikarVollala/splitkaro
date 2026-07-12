@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { api } from '../lib/api';
 import { useActiveGroupStore } from './activeGroupStore';
+import { useAuthStore } from './authStore';
+import { preprocessReceipt } from '../lib/preprocess';
 
 export interface Expense {
   id: string;
@@ -14,6 +16,14 @@ export interface Expense {
   splitMethod: 'equal' | 'custom';
   createdAt: string;
   splits: { userId: string; amount: number }[];
+  status?: 'scanning' | 'review' | 'ready' | 'failed'; // For Optimistic UI
+  category?: 'FOOD_DINING' | 'ACCOMMODATION' | 'TRAVEL_TRANSPORT' | 'SHOPPING' | 'ENTERTAINMENT' | 'TRIP_VACATION' | 'HOME_UTILITIES' | 'HEALTH_MEDICAL' | 'EVENTS_GIFTS' | 'OTHER';
+  merchantName?: string | null;
+  date?: string | null;
+  currency?: string | null;
+  lineItems?: { name: string; quantity: number; price: number }[] | null;
+  travelInfo?: { origin: string; destination: string; distanceKm: number; vehicleType: string } | null;
+  smartNotes?: string | null;
 }
 
 interface ExpenseState {
@@ -21,10 +31,12 @@ interface ExpenseState {
   isLoading: boolean;
   error: string | null;
   fetchExpenses: (groupId: string) => Promise<void>;
-  createExpense: (groupId: string, data: FormData) => Promise<boolean>;
+  createExpense: (groupId: string, data: FormData, tempIdToRemove?: string) => Promise<boolean>;
   updateExpense: (expenseId: string, data: FormData) => Promise<boolean>;
   deleteExpense: (expenseId: string) => Promise<boolean>;
   fetchExpenseDetail: (expenseId: string) => Promise<Expense | null>;
+  uploadReceipt: (groupId: string, file: File) => Promise<void>;
+  updateExpenseState: (id: string, updatedData: Partial<Expense>) => void;
 }
 
 const refreshGroupDerivedState = (groupId: string) => {
@@ -42,7 +54,12 @@ export const useExpenseStore = create<ExpenseState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await api.get(`/api/groups/${groupId}/expenses`);
-      set({ expenses: response.data, isLoading: false });
+      // Map elements with status ready if not scanning
+      const expensesWithStatus = response.data.map((exp: any) => ({
+        ...exp,
+        status: exp.status || 'ready'
+      }));
+      set({ expenses: expensesWithStatus, isLoading: false });
     } catch (err) {
       const message = axios.isAxiosError(err)
         ? err.response?.data?.error || 'Failed to load expenses'
@@ -51,16 +68,22 @@ export const useExpenseStore = create<ExpenseState>((set) => ({
     }
   },
   
-  createExpense: async (groupId, data) => {
+  createExpense: async (groupId, data, tempIdToRemove) => {
     set({ isLoading: true, error: null });
     try {
       const response = await api.post(`/api/groups/${groupId}/expenses`, data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      set((state) => ({ 
-        expenses: [response.data, ...state.expenses], 
-        isLoading: false 
-      }));
+      set((state) => {
+        let filtered = state.expenses;
+        if (tempIdToRemove) {
+          filtered = filtered.filter(e => e.id !== tempIdToRemove);
+        }
+        return {
+          expenses: [{ ...response.data, status: 'ready' }, ...filtered],
+          isLoading: false
+        };
+      });
       refreshGroupDerivedState(groupId);
       return true;
     } catch (err) {
@@ -80,7 +103,7 @@ export const useExpenseStore = create<ExpenseState>((set) => ({
       });
       const updatedExpense = response.data;
       set((state) => ({ 
-        expenses: state.expenses.map(e => e.id === expenseId ? updatedExpense : e), 
+        expenses: state.expenses.map(e => e.id === expenseId ? { ...updatedExpense, status: 'ready' } : e), 
         isLoading: false 
       }));
       if (updatedExpense.groupId) {
@@ -127,14 +150,101 @@ export const useExpenseStore = create<ExpenseState>((set) => ({
       set((state) => {
         const exists = state.expenses.some(e => e.id === detailedExpense.id);
         const updatedExpenses = exists
-          ? state.expenses.map(e => e.id === detailedExpense.id ? detailedExpense : e)
-          : [...state.expenses, detailedExpense];
+          ? state.expenses.map(e => e.id === detailedExpense.id ? { ...detailedExpense, status: 'ready' } : e)
+          : [...state.expenses, { ...detailedExpense, status: 'ready' }];
         return { expenses: updatedExpenses };
       });
       return detailedExpense;
     } catch (err) {
       return null;
     }
+  },
+
+  uploadReceipt: async (groupId, file) => {
+    const tempId = 'temp-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const currentUser = useAuthStore.getState().user;
+    const members = useActiveGroupStore.getState().members;
+    
+    // Optimistic UI placeholder expense object
+    const placeholder: Expense = {
+      id: tempId,
+      groupId,
+      creatorId: currentUser?.id || 'unknown',
+      title: 'Scanning receipt...',
+      amount: 0,
+      notes: 'Scanning the receipt via Gemini AI. Please wait...',
+      receiptUrl: null,
+      splitMethod: 'equal',
+      createdAt: new Date().toISOString(),
+      splits: members.map(m => ({ userId: m.id, amount: 0 })),
+      status: 'scanning'
+    };
+
+    set((state) => ({
+      expenses: [placeholder, ...state.expenses]
+    }));
+
+    // Start asynchronous preprocessing and network upload without blocking UI
+    (async () => {
+      try {
+        const processedBlob = await preprocessReceipt(file);
+        const processedFile = new File([processedBlob], 'receipt.jpg', { type: 'image/jpeg' });
+        
+        const formData = new FormData();
+        formData.append('receipt', processedFile);
+        formData.append('groupId', groupId);
+        formData.append('tempId', tempId);
+
+        await api.post('/api/receipts/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      } catch (err) {
+        console.error('Failed to process and upload receipt:', err);
+        // Mark as failed in store
+        useExpenseStore.getState().updateExpenseState(tempId, {
+          status: 'failed',
+          title: 'Scanning failed',
+          notes: 'An error occurred during scanning or uploading. Please try again.'
+        });
+      }
+    })();
+  },
+
+  updateExpenseState: (id, updatedData) => {
+    set((state) => {
+      const exists = state.expenses.some(e => e.id === id);
+      if (!exists) {
+        // If it does not exist (e.g. user refreshed the page or it is a new expense broadcast), prepended
+        if (updatedData.groupId) {
+          // Trigger derived refresh
+          refreshGroupDerivedState(updatedData.groupId);
+        }
+        return {
+          expenses: [{ ...updatedData, status: 'ready' } as Expense, ...state.expenses]
+        };
+      }
+      
+      const newExpenses = state.expenses.map((exp) => {
+        if (exp.id === id) {
+          const merged = {
+            ...exp,
+            ...updatedData,
+            status: updatedData.status || 'ready' // fallback to ready
+          };
+          // If the final ID comes from DB (e.g. from Socket.io), we want to replace tempId with real database ID
+          if (updatedData.id && updatedData.id !== id) {
+            merged.id = updatedData.id;
+          }
+          return merged;
+        }
+        return exp;
+      });
+
+      if (updatedData.groupId) {
+        refreshGroupDerivedState(updatedData.groupId);
+      }
+
+      return { expenses: newExpenses };
+    });
   }
 }));
-

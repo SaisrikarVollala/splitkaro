@@ -1,14 +1,182 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
 
 @theme {
-  --color-primary: #00d09c;
-  --color-danger: #ff4757;
-  --color-dark-bg: #0a0a0f;
-  --color-dark-card: #12121a;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-card: 18px;
+  --radius-btn: 12px;
+  --radius-input: 12px;
+  --radius-img: 14px;
+  
+  --animate-fade-in: fade-in 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-up: slide-up 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-body {
-  background-color: var(--color-dark-bg);
-  color: white;
-  font-family: 'Inter', sans-serif;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground transition-colors duration-200;
+  }
+  html {
+    @apply font-sans antialiased;
+  }
+}
+
+:root {
+  --background: #FAFAFA;
+  --foreground: #171717;
+  --card: #FFFFFF;
+  --card-foreground: #171717;
+  --popover: #FFFFFF;
+  --popover-foreground: #171717;
+  --primary: #2563EB;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F3F4F6;
+  --secondary-foreground: #171717;
+  --muted: #F3F4F6;
+  --muted-foreground: #6B7280;
+  --accent: #F3F4F6;
+  --accent-foreground: #171717;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --radius: 18px;
+
+  --cat-food-dining: #F97316;
+  --cat-food-dining-bg: rgba(249, 115, 22, 0.08);
+  --cat-food-dining-border: rgba(249, 115, 22, 0.25);
+
+  --cat-accommodation: #6366F1;
+  --cat-accommodation-bg: rgba(99, 102, 241, 0.08);
+  --cat-accommodation-border: rgba(99, 102, 241, 0.25);
+
+  --cat-travel-transport: #2563EB;
+  --cat-travel-transport-bg: rgba(37, 99, 235, 0.08);
+  --cat-travel-transport-border: rgba(37, 99, 235, 0.25);
+
+  --cat-shopping: #EC4899;
+  --cat-shopping-bg: rgba(236, 72, 153, 0.08);
+  --cat-shopping-border: rgba(236, 72, 153, 0.25);
+
+  --cat-entertainment: #8B5CF6;
+  --cat-entertainment-bg: rgba(139, 92, 246, 0.08);
+  --cat-entertainment-border: rgba(139, 92, 246, 0.25);
+
+  --cat-trip-vacation: #14B8A6;
+  --cat-trip-vacation-bg: rgba(20, 184, 166, 0.08);
+  --cat-trip-vacation-border: rgba(20, 184, 166, 0.25);
+
+  --cat-home-utilities: #10B981;
+  --cat-home-utilities-bg: rgba(16, 185, 129, 0.08);
+  --cat-home-utilities-border: rgba(16, 185, 129, 0.25);
+
+  --cat-health-medical: #EF4444;
+  --cat-health-medical-bg: rgba(239, 68, 68, 0.08);
+  --cat-health-medical-border: rgba(239, 68, 68, 0.25);
+
+  --cat-events-gifts: #F59E0B;
+  --cat-events-gifts-bg: rgba(245, 158, 11, 0.08);
+  --cat-events-gifts-border: rgba(245, 158, 11, 0.25);
+
+  --cat-other: #6B7280;
+  --cat-other-bg: rgba(107, 114, 128, 0.08);
+  --cat-other-border: rgba(107, 114, 128, 0.25);
+}
+
+.dark {
+  --background: #09090B;
+  --foreground: #FAFAFA;
+  --card: #18181B;
+  --card-foreground: #FAFAFA;
+  --popover: #18181B;
+  --popover-foreground: #FAFAFA;
+  --primary: #2563EB;
+  --primary-foreground: #FAFAFA;
+  --secondary: #27272A;
+  --secondary-foreground: #FAFAFA;
+  --muted: #27272A;
+  --muted-foreground: #A1A1AA;
+  --accent: #27272A;
+  --accent-foreground: #FAFAFA;
+  --destructive: #DC2626;
+  --destructive-foreground: #FAFAFA;
+  --border: #27272A;
+  --input: #27272A;
+  --ring: #2563EB;
+
+  --cat-food-dining: #FB923C;
+  --cat-food-dining-bg: rgba(251, 146, 60, 0.1);
+  --cat-food-dining-border: rgba(251, 146, 60, 0.3);
+
+  --cat-accommodation: #818CF8;
+  --cat-accommodation-bg: rgba(129, 140, 248, 0.1);
+  --cat-accommodation-border: rgba(129, 140, 248, 0.3);
+
+  --cat-travel-transport: #60A5FA;
+  --cat-travel-transport-bg: rgba(96, 165, 250, 0.1);
+  --cat-travel-transport-border: rgba(96, 165, 250, 0.3);
+
+  --cat-shopping: #F472B6;
+  --cat-shopping-bg: rgba(244, 114, 182, 0.1);
+  --cat-shopping-border: rgba(244, 114, 182, 0.3);
+
+  --cat-entertainment: #A78BFA;
+  --cat-entertainment-bg: rgba(167, 139, 250, 0.1);
+  --cat-entertainment-border: rgba(167, 139, 250, 0.3);
+
+  --cat-trip-vacation: #2DD4BF;
+  --cat-trip-vacation-bg: rgba(45, 212, 191, 0.1);
+  --cat-trip-vacation-border: rgba(45, 212, 191, 0.3);
+
+  --cat-home-utilities: #34D399;
+  --cat-home-utilities-bg: rgba(52, 211, 153, 0.1);
+  --cat-home-utilities-border: rgba(52, 211, 153, 0.3);
+
+  --cat-health-medical: #F87171;
+  --cat-health-medical-bg: rgba(248, 113, 113, 0.1);
+  --cat-health-medical-border: rgba(248, 113, 113, 0.3);
+
+  --cat-events-gifts: #FBBF24;
+  --cat-events-gifts-bg: rgba(251, 191, 36, 0.1);
+  --cat-events-gifts-border: rgba(251, 191, 36, 0.3);
+
+  --cat-other: #9CA3AF;
+  --cat-other-bg: rgba(156, 163, 175, 0.1);
+  --cat-other-border: rgba(156, 163, 175, 0.3);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }

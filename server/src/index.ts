@@ -1,12 +1,15 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './lib/auth';
+import { initSocket } from './services/socket';
 import groupsRouter from './routes/groups';
 import invitationsRouter from './routes/invitations';
 import expensesRouter from './routes/expenses';
 import settlementsRouter from './routes/settlements';
+import receiptsRouter from './routes/receipts';
 import { zodErrorHandler } from './middleware/validate';
 import path from 'path';
 
@@ -33,6 +36,7 @@ app.use('/api/invitations', invitationsRouter);
 app.use('/api/groups/:groupId/expenses', expensesRouter); // Group specific expenses
 app.use('/api/expenses', expensesRouter); // Global expense actions (detail, edit, delete)
 app.use('/api/groups/:groupId/settlements', settlementsRouter); // Group settlements
+app.use('/api/receipts', receiptsRouter); // Receipt upload pipeline
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -42,10 +46,16 @@ app.get('/api/health', (req, res) => {
 app.use(zodErrorHandler);
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err);
-  res.status(500).json({ error: 'Internal server error' });
+  res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, () => {
+// Wrap express app inside standard HTTP server for WebSockets
+const httpServer = createServer(app);
+
+// Initialize Socket.io
+initSocket(httpServer);
+
+// Start listening
+httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-

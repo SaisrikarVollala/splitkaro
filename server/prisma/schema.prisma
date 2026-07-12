@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -103,17 +102,24 @@ model Invitation {
 }
 
 model Expense {
-  id          String         @id @default(uuid())
-  groupId     String
-  creatorId   String
-  title       String
-  amount      Float
-  notes       String?
-  receiptUrl  String?
-  splitMethod String         @default("equal") // "equal" | "custom"
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  splits      ExpenseSplit[]
+  id           String         @id @default(uuid())
+  groupId      String
+  creatorId    String
+  title        String
+  amount       Float
+  notes        String?
+  receiptUrl   String?
+  splitMethod  String         @default("equal") // "equal" | "custom"
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  splits       ExpenseSplit[]
+  category     String?
+  merchantName String?
+  date         String?
+  currency     String?        @default("INR")
+  lineItems    Json?
+  travelInfo   Json?
+  smartNotes   String?
 }
 
 model ExpenseSplit {
@@ -140,5 +146,3 @@ model Settlement {
   createdAt DateTime @default(now())
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
-
-

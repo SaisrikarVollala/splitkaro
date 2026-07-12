@@ -15,6 +15,23 @@ const baseExpenseSchema = z.object({
   notes: z.string().optional().nullable(),
   splitMethod: z.enum(['equal', 'custom']),
   splits: z.array(splitItemSchema).min(1, 'At least one split participant is required'),
+  category: z.string().optional().nullable(),
+  receiptUrl: z.string().optional().nullable(),
+  merchantName: z.string().optional().nullable(),
+  date: z.string().optional().nullable(),
+  currency: z.string().optional().nullable(),
+  lineItems: z.array(z.object({
+    name: z.string(),
+    quantity: z.number(),
+    price: z.number()
+  })).optional().nullable(),
+  travelInfo: z.object({
+    origin: z.string(),
+    destination: z.string(),
+    distanceKm: z.number(),
+    vehicleType: z.string()
+  }).optional().nullable(),
+  smartNotes: z.string().optional().nullable(),
 });
 
 export const createExpenseSchema = baseExpenseSchema.refine((data) => {

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Upload } from 'lucide-react';
+import { X, Loader2, Upload, FileText, Sparkles, MapPin, ArrowRight } from 'lucide-react';
 import { useExpenseStore } from '../stores/expenseStore';
 import { expenseFormSchema } from '../lib/schemas';
+import { CATEGORY_MAP } from './WalletExpenseCard';
 import type { ExpenseInitialData, ExpenseSplit } from '../lib/types';
 
 interface ExpenseFormProps {
@@ -20,6 +21,12 @@ export const ExpenseForm = ({ groupId, expenseId, isOpen, onClose, members, onSu
   const [notes, setNotes] = useState('');
   const [receipt, setReceipt] = useState<File | null>(null);
   
+  const [category, setCategory] = useState('OTHER');
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [lineItems, setLineItems] = useState<any[] | null>(null);
+  const [travelInfo, setTravelInfo] = useState<any | null>(null);
+  const [smartNotes, setSmartNotes] = useState<string | null>(null);
+
   const [splitMethod, setSplitMethod] = useState<'equal' | 'custom'>('equal');
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [customSplits, setCustomSplits] = useState<Record<string, string>>({});
@@ -40,6 +47,12 @@ export const ExpenseForm = ({ groupId, expenseId, isOpen, onClose, members, onSu
         setNotes(initialData.notes || '');
         setSplitMethod(initialData.splitMethod);
         
+        setCategory(initialData.category || 'OTHER');
+        setReceiptUrl(initialData.receiptUrl || null);
+        setLineItems(initialData.lineItems || null);
+        setTravelInfo(initialData.travelInfo || null);
+        setSmartNotes(initialData.smartNotes || null);
+
         const memberIds = new Set<string>(initialData.splits.map((s: ExpenseSplit) => s.userId));
         setSelectedMembers(memberIds);
         
@@ -57,6 +70,11 @@ export const ExpenseForm = ({ groupId, expenseId, isOpen, onClose, members, onSu
         setSplitMethod('equal');
         setSelectedMembers(new Set(members.map(m => m.id)));
         setCustomSplits({});
+        setCategory('OTHER');
+        setReceiptUrl(null);
+        setLineItems(null);
+        setTravelInfo(null);
+        setSmartNotes(null);
       }
       setReceipt(null);
       setError('');
@@ -96,7 +114,6 @@ export const ExpenseForm = ({ groupId, expenseId, isOpen, onClose, members, onSu
     });
 
     if (!validationResult.success) {
-      // Get the first error message
       const firstError = validationResult.error.errors[0]?.message || 'Validation error';
       setError(firstError);
       return;
@@ -123,11 +140,18 @@ export const ExpenseForm = ({ groupId, expenseId, isOpen, onClose, members, onSu
     formData.append('splits', JSON.stringify(splitsToSave));
     if (receipt) formData.append('receipt', receipt);
 
+    // Scanner metadata
+    formData.append('category', category);
+    if (receiptUrl) formData.append('receiptUrl', receiptUrl);
+    if (lineItems) formData.append('lineItems', JSON.stringify(lineItems));
+    if (travelInfo) formData.append('travelInfo', JSON.stringify(travelInfo));
+    if (smartNotes) formData.append('smartNotes', smartNotes || '');
+
     let success = false;
     if (expenseId) {
       success = await updateExpense(expenseId, formData);
     } else {
-      success = await createExpense(groupId, formData);
+      success = await createExpense(groupId, formData, initialData?.tempId);
     }
 
     if (success) {
@@ -138,34 +162,51 @@ export const ExpenseForm = ({ groupId, expenseId, isOpen, onClose, members, onSu
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
       
-      <div className="bg-[#12121a] border border-gray-800 rounded-2xl w-full max-w-lg p-6 relative z-10 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
-        <div className="flex justify-between items-center mb-6 sticky top-0 bg-[#12121a] z-20 pb-2 border-b border-gray-800">
-          <h2 className="text-2xl font-bold text-white">{expenseId ? 'Edit Expense' : 'Add Expense'}</h2>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-white p-2">
+      <div className="bg-card border border-border rounded-card w-full max-w-lg p-6 relative z-10 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar text-foreground transition-all duration-200">
+        <div className="flex justify-between items-center mb-6 sticky top-0 bg-card z-20 pb-2 border-b border-border">
+          <h2 className="text-xl font-bold text-foreground">
+            {expenseId ? 'Edit Expense' : (receiptUrl ? 'Review Scanned Expense' : 'Add Expense')}
+          </h2>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted transition-colors cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {error && <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm">{error}</div>}
+        {error && <div className="mb-6 p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-xs font-semibold">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-400 mb-1">Title</label>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Title / Merchant</label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder="Dinner, Taxi, etc."
-                className="w-full bg-[#0a0a0f] border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00d09c]"
+                className="w-full bg-muted/20 border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary text-sm font-semibold"
               />
+            </div>
+
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Category</label>
+              <select
+                value={category}
+                onChange={e => setCategory(e.target.value)}
+                className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-foreground focus:outline-none focus:border-primary text-sm font-semibold h-[42px]"
+              >
+                {Object.entries(CATEGORY_MAP).map(([key, value]) => (
+                  <option key={key} value={key}>
+                    {value.label}
+                  </option>
+                ))}
+              </select>
             </div>
             
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-sm font-medium text-gray-400 mb-1">Amount (₹)</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Amount (₹)</label>
               <input
                 type="number"
                 required
@@ -174,68 +215,142 @@ export const ExpenseForm = ({ groupId, expenseId, isOpen, onClose, members, onSu
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full bg-[#0a0a0f] border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00d09c]"
+                className="w-full bg-muted/20 border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary text-sm font-extrabold"
               />
             </div>
 
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-sm font-medium text-gray-400 mb-1">Receipt Image</label>
-              <label className="w-full h-[50px] flex items-center justify-center gap-2 bg-[#0a0a0f] border border-gray-700 border-dashed rounded-xl cursor-pointer hover:border-gray-500 transition-colors">
-                <Upload className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-400 truncate px-2">{receipt ? receipt.name : 'Upload file'}</span>
-                <input type="file" accept="image/*" className="hidden" onChange={e => setReceipt(e.target.files?.[0] || null)} />
-              </label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Receipt File</label>
+              {receiptUrl ? (
+                <div className="h-[42px] flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-3.5 text-xs text-primary font-bold">
+                  <span className="flex items-center gap-1.5 truncate">
+                    <FileText className="w-4 h-4 shrink-0" />
+                    <span>Scanned Receipt</span>
+                  </span>
+                  <a href={receiptUrl.startsWith('/') ? `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${receiptUrl}` : receiptUrl} target="_blank" rel="noreferrer" className="underline hover:text-primary/80 shrink-0 ml-2">View</a>
+                </div>
+              ) : (
+                <label className="w-full h-[42px] flex items-center justify-center gap-2 bg-muted/20 border border-border border-dashed rounded-xl cursor-pointer hover:border-muted-foreground/50 transition-colors">
+                  <Upload className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground truncate px-2">{receipt ? receipt.name : 'Upload receipt'}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={e => setReceipt(e.target.files?.[0] || null)} />
+                </label>
+              )}
             </div>
             
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-400 mb-1">Notes (Optional)</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Notes (Optional)</label>
               <input
                 type="text"
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 placeholder="Any additional details..."
-                className="w-full bg-[#0a0a0f] border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00d09c]"
+                className="w-full bg-muted/20 border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary text-sm font-medium"
               />
             </div>
           </div>
 
-          <div className="border-t border-gray-800 pt-6">
+          {/* AI Scanned Line Items Widget */}
+          {lineItems && lineItems.length > 0 && (
+            <div className="bg-muted/10 border border-border rounded-2xl p-4 space-y-3">
+              <div className="flex items-center gap-1.5 text-primary text-xs font-bold uppercase tracking-wider">
+                <Sparkles className="w-4 h-4" />
+                <span>Parsed Line Items</span>
+              </div>
+              <div className="border border-border rounded-xl overflow-hidden text-xs">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-muted/50 border-b border-border text-muted-foreground font-semibold">
+                      <th className="p-2">Item</th>
+                      <th className="p-2 text-center w-12">Qty</th>
+                      <th className="p-2 text-right w-20">Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lineItems.map((item: any, idx: number) => (
+                      <tr key={idx} className="border-b border-border/40 text-foreground last:border-0 hover:bg-muted/20">
+                        <td className="p-2 font-medium">{item.name}</td>
+                        <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
+                        <td className="p-2 text-right font-bold">₹{item.price.toLocaleString('en-IN')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* AI Scanned Travel Itinerary Widget */}
+          {travelInfo && (
+            <div className="bg-muted/10 border border-border rounded-2xl p-4 space-y-3">
+              <div className="flex items-center gap-1.5 text-primary text-xs font-bold uppercase tracking-wider">
+                <Sparkles className="w-4 h-4" />
+                <span>Parsed Travel Route</span>
+              </div>
+              <div className="bg-muted/40 border border-border rounded-xl p-3 text-xs space-y-3">
+                <div className="flex items-center gap-3 text-foreground font-bold">
+                  <div className="flex items-center gap-1 bg-card px-2 py-0.5 rounded border border-border">
+                    <MapPin className="w-3.5 h-3.5 text-rose-500" />
+                    <span>{travelInfo.origin}</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex items-center gap-1 bg-card px-2 py-0.5 rounded border border-border">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>{travelInfo.destination}</span>
+                  </div>
+                </div>
+                <div className="flex gap-4 text-muted-foreground pt-2 border-t border-border/30">
+                  <div>
+                    <span className="block text-[10px] uppercase font-bold">Distance</span>
+                    <span className="text-foreground font-extrabold">{travelInfo.distanceKm} km</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] uppercase font-bold">Vehicle</span>
+                    <span className="text-foreground font-extrabold capitalize">{travelInfo.vehicleType}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Split Settings */}
+          <div className="border-t border-border pt-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-white">Split with</h3>
-              <div className="flex bg-[#0a0a0f] rounded-lg p-1 border border-gray-800">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Split settings</h3>
+              <div className="flex bg-muted rounded-lg p-0.5 border border-border">
                 <button
                   type="button"
                   onClick={() => setSplitMethod('equal')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${splitMethod === 'equal' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors cursor-pointer ${splitMethod === 'equal' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   Equal
                 </button>
                 <button
                   type="button"
                   onClick={() => setSplitMethod('custom')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${splitMethod === 'custom' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors cursor-pointer ${splitMethod === 'custom' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   Custom
                 </button>
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {members.map(member => (
-                <div key={member.id} className="flex items-center justify-between p-3 bg-[#0a0a0f] border border-gray-800 rounded-xl">
+                <div key={member.id} className="flex items-center justify-between p-3.5 bg-muted/20 border border-border rounded-xl hover:border-primary/20 transition-all duration-200">
                   <label className="flex items-center gap-3 cursor-pointer select-none flex-1">
                     <input
                       type="checkbox"
                       checked={selectedMembers.has(member.id)}
                       onChange={() => toggleMember(member.id)}
-                      className="w-5 h-5 rounded border-gray-700 text-[#00d09c] focus:ring-[#00d09c] bg-[#12121a] accent-[#00d09c]"
+                      className="w-4.5 h-4.5 rounded border-border text-primary focus:ring-primary bg-card accent-primary"
                     />
-                    <span className="text-gray-200">{member.name}</span>
+                    <span className="text-sm font-bold text-foreground">{member.name}</span>
                   </label>
                   
                   {splitMethod === 'custom' && selectedMembers.has(member.id) && (
                     <div className="flex items-center gap-1 w-24">
-                      <span className="text-gray-500 text-sm">₹</span>
+                      <span className="text-muted-foreground text-xs font-bold">₹</span>
                       <input
                         type="number"
                         step="0.01"
@@ -243,12 +358,12 @@ export const ExpenseForm = ({ groupId, expenseId, isOpen, onClose, members, onSu
                         value={customSplits[member.id] || ''}
                         onChange={e => handleCustomSplitChange(member.id, e.target.value)}
                         placeholder="0.00"
-                        className="w-full bg-transparent border-b border-gray-700 text-right focus:outline-none focus:border-[#00d09c] text-white px-1"
+                        className="w-full bg-transparent border-b border-border text-right focus:outline-none focus:border-primary text-foreground text-sm font-extrabold px-1"
                       />
                     </div>
                   )}
                   {splitMethod === 'equal' && selectedMembers.has(member.id) && (
-                    <span className="text-sm text-gray-500">
+                    <span className="text-xs font-bold text-muted-foreground">
                       ₹{amount ? (parseFloat(amount) / selectedMembers.size).toFixed(2) : '0.00'}
                     </span>
                   )}
@@ -257,11 +372,11 @@ export const ExpenseForm = ({ groupId, expenseId, isOpen, onClose, members, onSu
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-btn font-bold text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer">
               Cancel
             </button>
-            <button type="submit" disabled={isSubmitting} className="flex items-center gap-2 bg-[#00d09c] text-black font-semibold px-6 py-2.5 rounded-xl hover:bg-[#00b386] transition-colors disabled:opacity-50">
+            <button type="submit" disabled={isSubmitting} className="flex items-center gap-2 bg-primary text-primary-foreground font-bold text-xs px-6 py-2.5 rounded-btn hover:opacity-90 transition-all shadow-sm cursor-pointer active:scale-[0.98]">
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               Save Expense
             </button>

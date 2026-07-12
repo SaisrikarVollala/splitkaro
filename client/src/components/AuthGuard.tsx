@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { DashboardLayout } from './DashboardLayout';
 
 export const AuthGuard = () => {
   const { user, isPending, checkSession } = useAuthStore();
@@ -12,8 +13,8 @@ export const AuthGuard = () => {
 
   if (isPending) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00d09c]"></div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -22,5 +23,9 @@ export const AuthGuard = () => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <Outlet />;
+  return (
+    <DashboardLayout>
+      <Outlet />
+    </DashboardLayout>
+  );
 };

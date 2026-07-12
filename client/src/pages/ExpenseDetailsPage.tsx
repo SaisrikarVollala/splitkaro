@@ -1,12 +1,29 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Navbar } from '../components/Navbar';
 import { useAuthStore } from '../stores/authStore';
-import { useExpenseStore, Expense } from '../stores/expenseStore';
+import { useExpenseStore } from '../stores/expenseStore';
 import { useActiveGroupStore } from '../stores/activeGroupStore';
-import { ArrowLeft, Edit2, Trash2, Calendar, Receipt as ReceiptIcon, FileText, Loader2, Image } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Edit2, 
+  Trash2, 
+  Calendar, 
+  Receipt as ReceiptIcon, 
+  FileText, 
+  Loader2, 
+  Image, 
+  Sparkles, 
+  CheckCircle2, 
+  Clock, 
+  ArrowRight,
+  TrendingDown,
+  Info
+} from 'lucide-react';
 import { ExpenseForm } from '../components/ExpenseForm';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { Card, CardContent } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
 
 const ExpenseDetailsPage = () => {
   const { groupId, expenseId } = useParams<{ groupId: string; expenseId: string }>();
@@ -36,22 +53,16 @@ const ExpenseDetailsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
-        <Navbar />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#00d09c]" />
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh] w-full text-foreground bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!expense) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
-        <Navbar />
-        <div className="max-w-3xl mx-auto w-full p-4 mt-8">
-          <h2 className="text-2xl font-bold text-red-500 text-center">Expense not found</h2>
-        </div>
+      <div className="max-w-3xl mx-auto w-full p-4 mt-8 text-foreground bg-background">
+        <h2 className="text-2xl font-bold text-destructive text-center">Expense not found</h2>
       </div>
     );
   }
@@ -73,135 +84,215 @@ const ExpenseDetailsPage = () => {
     }
   };
 
+  // Find user's split amount
+  const mySplit = expense.splits.find(s => s.userId === user?.id);
+  const myShare = mySplit ? mySplit.amount : 0;
+
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white pb-20">
-      <Navbar />
-      
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-        <Link 
-          to={`/groups/${groupId}`}
-          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-6"
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 pb-20 animate-fade-in">
+      <Link 
+        to={`/groups/${groupId}`}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Group
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Group</span>
         </Link>
 
-        <div className="bg-[#12121a] border border-gray-800 rounded-3xl overflow-hidden shadow-2xl">
-          {/* Header Card */}
-          <div className="p-8 border-b border-gray-800 relative">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-[#00d09c]/5 rounded-bl-full pointer-events-none blur-xl"></div>
-            
-            <div className="flex justify-between items-start mb-6">
-              <div className="w-16 h-16 bg-[#00d09c]/10 rounded-2xl flex items-center justify-center border border-[#00d09c]/20 shadow-lg shadow-[#00d09c]/10">
-                <ReceiptIcon className="w-8 h-8 text-[#00d09c]" />
+        <div className="space-y-6">
+          {/* Main Detail Card */}
+          <Card className="rounded-card border border-border bg-card shadow-sm overflow-hidden">
+            {/* Header Block */}
+            <div className="p-8 border-b border-border/50 relative">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-bl-full pointer-events-none blur-xl"></div>
+              
+              <div className="flex justify-between items-start mb-6">
+                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-inner">
+                  <ReceiptIcon className="w-6 h-6 text-primary" />
+                </div>
+
+                {isCreator && (
+                  <div className="flex items-center gap-2 relative z-10">
+                    <Button 
+                      onClick={() => setIsEditOpen(true)}
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      onClick={() => setIsDeleteOpen(true)}
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
-              {isCreator && (
-                <div className="flex items-center gap-2 relative z-10">
-                  <button 
-                    onClick={() => setIsEditOpen(true)}
-                    className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors border border-transparent hover:border-gray-700"
-                  >
-                    <Edit2 className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={() => setIsDeleteOpen(true)}
-                    className="p-2 rounded-xl text-gray-400 hover:text-[#ff4757] hover:bg-red-500/10 transition-colors border border-transparent hover:border-red-500/20"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+              <div className="flex items-center gap-2 mb-2">
+                <h1 className="text-2xl font-extrabold tracking-tight text-foreground">{expense.title}</h1>
+                {expense.category && (
+                  <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-wider">
+                    {expense.category}
+                  </Badge>
+                )}
+              </div>
+
+              <div className="text-4xl font-extrabold text-foreground tracking-tight mb-6">
+                ₹{expense.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </div>
+
+              <div className="flex flex-wrap gap-3 text-xs">
+                <div className="bg-muted px-3 py-1.5 rounded-btn border border-border/50 text-muted-foreground">
+                  <span className="font-semibold">Paid by</span> <span className="text-foreground font-bold">{creatorName}</span>
+                </div>
+                <div className="bg-muted px-3 py-1.5 rounded-btn border border-border/50 text-muted-foreground flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span>{formattedDate}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Split Breakdown */}
+            <div className="p-8 space-y-6">
+              <div>
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">
+                  Participants Breakdown
+                </h3>
+                <div className="space-y-3">
+                  {expense.splits.map(split => {
+                    const memberName = members.find(m => m.id === split.userId)?.name || 'Unknown';
+                    const isExpenseCreator = split.userId === expense.creatorId;
+                    const isMe = split.userId === user?.id;
+                    
+                    return (
+                      <div key={split.userId} className="flex justify-between items-center p-4 bg-muted/40 rounded-btn border border-border/50 hover:border-border transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-muted-foreground text-xs">
+                            {memberName.charAt(0)}
+                          </div>
+                          <div>
+                            <span className="text-sm font-bold text-foreground">{memberName} {isMe && <span className="text-xs text-muted-foreground font-normal">(You)</span>}</span>
+                            <span className="block text-[10px] mt-0.5 font-medium">
+                              {isExpenseCreator ? (
+                                <span className="text-success bg-success/10 px-1.5 py-0.5 rounded border border-success/20">Paid</span>
+                              ) : (
+                                <span className="text-destructive bg-destructive/10 px-1.5 py-0.5 rounded border border-destructive/20">Owes ₹{split.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold text-foreground block text-sm">₹{split.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Share</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Notes Section */}
+              {expense.notes && (
+                <div className="pt-4 border-t border-border/50">
+                  <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4" />
+                    Notes
+                  </h3>
+                  <p className="text-xs text-muted-foreground bg-muted/30 p-4 rounded-btn border border-border/50 leading-relaxed">
+                    {expense.notes}
+                  </p>
+                </div>
+              )}
+
+              {/* AI Extraction Details */}
+              {expense.category && (
+                <div className="pt-4 border-t border-border/50 space-y-3">
+                  <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    AI Ingestion Details
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="bg-primary/5 border border-primary/10 rounded-btn p-3 text-xs">
+                      <span className="text-muted-foreground block text-[9px] uppercase font-bold tracking-wider">Merchant Name</span>
+                      <span className="font-bold text-foreground mt-0.5 block">{expense.merchantName || "Unknown"}</span>
+                    </div>
+                    {expense.smartNotes && (
+                      <div className="bg-primary/5 border border-primary/10 rounded-btn p-3 text-xs sm:col-span-2">
+                        <span className="text-muted-foreground block text-[9px] uppercase font-bold tracking-wider">Smart Context Notes</span>
+                        <span className="text-foreground leading-relaxed block mt-1">{expense.smartNotes}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Receipt Image */}
+              {expense.receiptUrl && (
+                <div className="pt-4 border-t border-border/50">
+                  <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Image className="w-4 h-4" />
+                    Receipt Attachment
+                  </h3>
+                  <div className="rounded-card overflow-hidden border border-border bg-muted/20">
+                    <img 
+                      src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${expense.receiptUrl}`} 
+                      alt="Receipt" 
+                      className="w-full max-h-[350px] object-cover hover:opacity-90 transition-opacity cursor-pointer rounded-card"
+                      onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${expense.receiptUrl}`, '_blank')}
+                    />
+                  </div>
                 </div>
               )}
             </div>
+          </Card>
 
-            <h1 className="text-3xl font-bold text-white mb-2">{expense.title}</h1>
-            <div className="text-4xl font-bold text-[#00d09c] mb-6">
-              ₹{expense.amount.toLocaleString('en-IN')}
-            </div>
-
-            <div className="flex flex-wrap gap-4 text-sm text-gray-400">
-              <div className="flex items-center gap-2 bg-gray-800/50 px-3 py-1.5 rounded-lg border border-gray-700/50">
-                <span className="font-medium">Paid by</span>
-                <span className="text-white">{creatorName}</span>
-              </div>
-              <div className="flex items-center gap-2 bg-gray-800/50 px-3 py-1.5 rounded-lg border border-gray-700/50">
-                <Calendar className="w-4 h-4" />
-                <span>{formattedDate}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-8 space-y-8">
-            {/* Notes Section */}
-            {expense.notes && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-gray-300">
-                  <FileText className="w-5 h-5 text-gray-500" />
-                  Notes
-                </h3>
-                <p className="text-gray-400 bg-[#0a0a0f] p-4 rounded-xl border border-gray-800/50">
-                  {expense.notes}
-                </p>
-              </div>
-            )}
-
-            {/* Receipt Section */}
-            {expense.receiptUrl && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-gray-300">
-                  <Image className="w-5 h-5 text-gray-500" />
-                  Receipt
-                </h3>
-                <div className="rounded-xl overflow-hidden border border-gray-800">
-                  <img 
-                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${expense.receiptUrl}`} 
-                    alt="Receipt" 
-                    className="w-full max-h-[400px] object-cover hover:opacity-90 transition-opacity cursor-pointer"
-                    onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${expense.receiptUrl}`, '_blank')}
-                  />
+          {/* Timeline Card */}
+          <Card className="rounded-card border border-border bg-card shadow-sm p-6">
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Activity Timeline</h3>
+            <div className="relative pl-6 border-l border-border/60 ml-2 space-y-6">
+              {/* Event 1 */}
+              <div className="relative">
+                <div className="absolute -left-[31px] top-0.5 bg-background p-0.5 rounded-full">
+                  <CheckCircle2 className="w-4.5 h-4.5 text-success bg-background" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold">Expense Created</h4>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Recorded in database by {creatorName}</p>
                 </div>
               </div>
-            )}
 
-            {/* Split Breakdown */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 text-gray-300 border-b border-gray-800 pb-2">
-                Participants Breakdown
-              </h3>
-              <div className="space-y-3">
-                {expense.splits.map(split => {
-                  const memberName = members.find(m => m.id === split.userId)?.name || 'Unknown';
-                  const isExpenseCreator = split.userId === expense.creatorId;
-                  
-                  return (
-                    <div key={split.userId} className="flex justify-between items-center p-4 bg-[#0a0a0f] rounded-xl border border-gray-800/50 hover:border-gray-700 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center font-bold text-gray-400 text-sm">
-                          {memberName.charAt(0)}
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-200">{memberName}</span>
-                          <span className="block text-xs mt-0.5">
-                            {isExpenseCreator ? (
-                              <span className="text-gray-500">Paid</span>
-                            ) : (
-                              <span className="text-[#ff4757] font-medium">Pay ₹{split.amount.toFixed(2)}</span>
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-bold text-gray-300 block">₹{split.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        <span className="text-xs text-gray-500">Split Value</span>
-                      </div>
-                    </div>
-                  );
-                })}
+              {/* Event 2 (If receipt uploaded) */}
+              {expense.receiptUrl && (
+                <div className="relative">
+                  <div className="absolute -left-[31px] top-0.5 bg-background p-0.5 rounded-full">
+                    <Sparkles className="w-4.5 h-4.5 text-primary bg-background" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold">Receipt Processed</h4>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Gemini AI completed optical character recognition & split derivation</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Event 3 */}
+              <div className="relative">
+                <div className="absolute -left-[31px] top-0.5 bg-background p-0.5 rounded-full">
+                  <Clock className="w-4.5 h-4.5 text-muted-foreground bg-background" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold">Settlement Status</h4>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {myShare === 0 ? 'You are settled up for this expense.' : `Your share: ₹${myShare.toLocaleString('en-IN')}`}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
-      </main>
 
       <ExpenseForm
         isOpen={isEditOpen}
@@ -225,6 +316,5 @@ const ExpenseDetailsPage = () => {
     </div>
   );
 };
-
 
 export default ExpenseDetailsPage;
